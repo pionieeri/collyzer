@@ -5,7 +5,7 @@ def fetch_logs(host, log_path, ssh_user, ssh_key_path):
     print(f"Attempting to fetch {log_path} from {host}...")
     try:
         client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy()) # Less secure -> replace with host key verification
+        client.load_system_host_keys()
         client.connect(hostname=host, username=ssh_user, key_filename=os.path.expanduser(ssh_key_path), timeout=10)
         stdin, stdout, stderr = client.exec_command(f'cat {log_path}')
 
