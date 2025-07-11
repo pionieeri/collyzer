@@ -1,0 +1,5 @@
+Jul 10 10:01:01 host1 CRON[12345]: (root) CMD (command)
+Jul 10 10:01:02 host1 systemd[1]: Starting Cleanup of Temporary Directories...
+Jul 10 10:01:03 host1 kernel: [    0.000000] Linux version 5.15.0-101-generic (buildd@lgw01-amd64-030) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #111-Ubuntu SMP Tue Mar 26 13:23:51 UTC 2024
+Jul 10 10:01:04 host2 dhclient[123]: DHCPREQUEST for 192.168.1.102 on eth0 to 192.168.1.1 port 67
+Jul 10 10:01:05 host2 CRON[54321]: (user) CMD (another command)
