@@ -41,6 +41,4 @@ The collected logs will be stored in the SQLite file specified by `SQLITE_DB_PAT
 
 ```bash
 datasette logs.db
-or
-uv run datasette logs.db
 ```

@@ -23,11 +23,18 @@
             buildInputs = [
               pkgs.uv
               pkgs.python3
-              #pkgs.redis
+              pkgs.redis
               pkgs.datasette
             ];
 
             shellHook = ''
+              if ! pgrep -x "redis-server" > /dev/null
+              then
+                echo "Starting Redis server in the background..."
+                redis-server --daemonize yes
+              else
+                echo "Redis server is already running."
+              fi
               echo "Development environment is ready."
             '';
           };

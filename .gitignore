@@ -12,5 +12,6 @@ wheels/
 # Env
 .env
 
-# db
+# misc
 *.db
+*.rdb
