@@ -1,9 +1,9 @@
 import argparse
 import os
-from config import HOST_IPS, SSH_USER, SSH_KEY_PATH, SQLITE_DB_PATH, LOG_SOURCES
-from collector import fetch_logs
-from log_parser import parse_line
-from database import init_db, save_log_entries
+from .config import HOST_IPS, SSH_USER, SSH_KEY_PATH, SQLITE_DB_PATH, LOG_SOURCES
+from .collector import fetch_logs
+from .log_parser import parse_line
+from .database import init_db, save_log_entries
 
 def main():
     parser = argparse.ArgumentParser(description="Log Collector and Analyzer")
