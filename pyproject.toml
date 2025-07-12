@@ -9,3 +9,11 @@ dependencies = [
     "python-decouple>=3.8",
     "sqlalchemy>=2.0.41",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
