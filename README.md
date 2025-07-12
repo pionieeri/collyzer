@@ -22,7 +22,7 @@ nix develop
 
 ### 2. Running the Collector
 
-The log collector script is `main.py`. It requires a `.env` file in the root directory with the following variables:
+The main application logic is in `src/main.py`. It requires a `.env` file in the root directory with the following variables:
 
 ```
 HOST_IPS=192.168.1.10,192.168.1.11
@@ -31,10 +31,10 @@ SSH_KEY_PATH=~/.ssh/id_rsa
 SQLITE_DB_PATH=logs.db
 ```
 
-Once the `.env` file is configured, run the script using `uv`:
+Once the `.env` file is configured, run the application as a module using `uv`:
 
 ```bash
-uv run python main.py
+uv run python -m src.main
 ```
 
 The collected logs will be stored in the SQLite file specified by `SQLITE_DB_PATH`. You can inspect the database using a tool like `datasette` (included in the development environment):
