@@ -25,6 +25,8 @@
               pkgs.python3
               pkgs.redis
               pkgs.datasette
+              pkgs.ruff
+              pkgs.just
             ];
 
             shellHook = ''

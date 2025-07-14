@@ -4,9 +4,14 @@ from .collector import fetch_all_logs_concurrently
 from .sample_loader import load_sample_logs
 from .config import SQLITE_DB_PATH
 
+
 def main():
     parser = argparse.ArgumentParser(description="Log Collector and Analyzer")
-    parser.add_argument('--use-sample-logs', action='store_true', help="Use local sample log files instead of fetching from remote hosts.")
+    parser.add_argument(
+        "--use-sample-logs",
+        action="store_true",
+        help="Use local sample log files instead of fetching from remote hosts.",
+    )
     args = parser.parse_args()
 
     print("### Starting Log Collector ###")
@@ -25,6 +30,7 @@ def main():
     print("\n### Log Collection Finished ###")
     print(f"Database is saved at: {SQLITE_DB_PATH}")
     print(f"To view the logs, run: 'datasette {SQLITE_DB_PATH}'")
+
 
 if __name__ == "__main__":
     main()

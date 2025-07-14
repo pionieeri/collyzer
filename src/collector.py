@@ -11,23 +11,36 @@ def fetch_logs(host, log_path, ssh_user, ssh_key_path):
     try:
         client = paramiko.SSHClient()
         client.load_system_host_keys()
-        client.connect(hostname=host, username=ssh_user, key_filename=os.path.expanduser(ssh_key_path), timeout=10)
-        stdin, stdout, stderr = client.exec_command(f'cat {log_path}')
-        log_content = stdout.read().decode('utf-8')
-        error = stderr.read().decode('utf-8').strip()
+        client.connect(
+            hostname=host,
+            username=ssh_user,
+            key_filename=os.path.expanduser(ssh_key_path),
+            timeout=10,
+        )
+        stdin, stdout, stderr = client.exec_command(f"cat {log_path}")
+        log_content = stdout.read().decode("utf-8")
+        error = stderr.read().decode("utf-8").strip()
         if error:
             print(f"  Error on {host} reading {log_path}: {error}")
             return ""
-        print(f"  Successfully fetched {len(log_content.splitlines())} lines from {log_path} on {host}.")
+        print(
+            f"  Successfully fetched {len(log_content.splitlines())} lines from {log_path} on {host}."
+        )
         return log_content
     except paramiko.AuthenticationException:
-        print(f"  Authentication failed for {ssh_user}@{host}. Check your SSH key and username.")
+        print(
+            f"  Authentication failed for {ssh_user}@{host}. Check your SSH key and username."
+        )
         return ""
     except Exception as e:
         print(f"  An error occurred connecting to {host}: {e}")
         return ""
     finally:
-        if 'client' in locals() and client.get_transport() is not None and client.get_transport().is_active():
+        if (
+            "client" in locals()
+            and client.get_transport() is not None
+            and client.get_transport().is_active()
+        ):
             client.close()
 
 
@@ -41,7 +54,7 @@ def _process_host(host: str) -> list:
         for line in log_content.splitlines():
             parsed_data = parse_line(line)
             if parsed_data:
-                parsed_data['log_source'] = source_name
+                parsed_data["log_source"] = source_name
                 host_log_entries.append(parsed_data)
     return host_log_entries
 
