@@ -1,0 +1,10 @@
+
+- name: "Failed Password"
+  description: "Detects failed password attempts for any user."
+  log_source: "auth"
+  pattern: "%Failed password%"
+
+- name: "Successful Sudo Command"
+  description: "Detects when a user successfully executes a command via sudo."
+  log_source: "auth"
+  pattern: "%COMMAND=%"

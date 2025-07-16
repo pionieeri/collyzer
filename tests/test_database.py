@@ -1,8 +1,7 @@
-import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime
 
-from src.database import init_db, save_log_entries, LogEntry, _calculate_hash
+from src.database import save_log_entries, LogEntry, _calculate_hash
 
 # Sample log entries for testing
 SAMPLE_LOG_1 = {
@@ -25,13 +24,7 @@ SAMPLE_LOG_2 = {
 SAMPLE_LOG_3 = SAMPLE_LOG_1.copy()
 
 
-@pytest.fixture
-def db_session():
-    """Creates a new in-memory SQLite database session for each test."""
-    # Using in-memory SQLite for tests is fast and avoids creating files
-    session, _ = init_db(':memory:')
-    yield session
-    session.close()
+
 
 
 @patch('src.database.redis_client', new_callable=MagicMock)

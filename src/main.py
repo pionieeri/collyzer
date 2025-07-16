@@ -3,7 +3,7 @@ from .database import init_db, save_log_entries
 from .collector import fetch_all_logs_concurrently
 from .sample_loader import load_sample_logs
 from .config import SQLITE_DB_PATH
-from .analyzer import find_failed_logins
+from .analyzer import run_analysis
 from .views import create_summary_views
 
 
@@ -27,7 +27,7 @@ def main():
 
     save_log_entries(session, all_log_entries)
 
-    find_failed_logins(session)
+    run_analysis(session)
 
     create_summary_views(engine)
 
