@@ -1,4 +1,4 @@
-import pytest
+
 from unittest.mock import patch, MagicMock
 from src.collector import fetch_all_logs_concurrently
 import paramiko

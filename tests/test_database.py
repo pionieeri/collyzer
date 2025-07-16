@@ -64,7 +64,6 @@ def test_save_unique_entries(mock_redis, db_session):
 def test_ignore_duplicate_entries(mock_redis, db_session):
     """Tests that fully duplicate log entries are not saved."""
     entries_to_save = [SAMPLE_LOG_1, SAMPLE_LOG_2]
-    hashes = [_calculate_hash(e) for e in entries_to_save]
 
     # Simulate that Redis has already seen these hashes
     mock_redis.mget.return_value = ['1', '1']
@@ -86,7 +85,6 @@ def test_handle_mixed_entries(mock_redis, db_session):
     # SAMPLE_LOG_3 is a duplicate of SAMPLE_LOG_1
     entries_to_save = [SAMPLE_LOG_1, SAMPLE_LOG_2, SAMPLE_LOG_3]
     
-    hash1 = _calculate_hash(SAMPLE_LOG_1)
     hash2 = _calculate_hash(SAMPLE_LOG_2)
     # hash3 will be the same as hash1
 

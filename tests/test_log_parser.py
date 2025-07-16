@@ -1,4 +1,4 @@
-import pytest
+
 from datetime import datetime
 from log_parser import parse_line
 
