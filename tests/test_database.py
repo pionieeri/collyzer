@@ -29,7 +29,7 @@ SAMPLE_LOG_3 = SAMPLE_LOG_1.copy()
 def db_session():
     """Creates a new in-memory SQLite database session for each test."""
     # Using in-memory SQLite for tests is fast and avoids creating files
-    session = init_db(':memory:')
+    session, _ = init_db(':memory:')
     yield session
     session.close()
 

@@ -4,6 +4,7 @@ from .collector import fetch_all_logs_concurrently
 from .sample_loader import load_sample_logs
 from .config import SQLITE_DB_PATH
 from .analyzer import find_failed_logins
+from .views import create_summary_views
 
 
 def main():
@@ -17,7 +18,7 @@ def main():
 
     print("### Starting Log Collector ###")
 
-    session = init_db(SQLITE_DB_PATH)
+    session, engine = init_db(SQLITE_DB_PATH)
 
     if args.use_sample_logs:
         all_log_entries = load_sample_logs()
@@ -27,6 +28,8 @@ def main():
     save_log_entries(session, all_log_entries)
 
     find_failed_logins(session)
+
+    create_summary_views(engine)
 
     session.close()
 

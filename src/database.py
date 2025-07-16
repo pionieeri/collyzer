@@ -29,7 +29,7 @@ def init_db(db_path):
     engine = sa.create_engine(f"sqlite:///{db_path}")
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
-    return Session()
+    return Session(), engine
 
 
 def _calculate_hash(entry_data: Dict) -> str:
