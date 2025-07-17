@@ -8,3 +8,23 @@
   description: "Detects when a user successfully executes a command via sudo."
   log_source: "auth"
   pattern: "%COMMAND=%"
+
+- name: "New SSH Session"
+  description: "Alerts on every successful SSH login."
+  log_source: "auth"
+  pattern: "%session opened for user%"
+
+- name: "Failed Sudo Attempt"
+  description: "A user failed to authenticate for a sudo command."
+  log_source: "auth"
+  pattern: "%NOT IN SUDOERS%"
+
+- name: "New User Created"
+  description: "A new local user account was created."
+  log_source: "auth"
+  pattern: "%new user:%"
+
+- name: "System Service Failure"
+  description: "A systemd service has failed to start."
+  log_source: "syslog"
+  pattern: "%Failed to start%"
