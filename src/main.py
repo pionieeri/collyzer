@@ -1,4 +1,6 @@
 import argparse
+import os
+import sys
 from .database import init_db, save_log_entries
 from .collector import fetch_all_logs_concurrently
 from .sample_loader import load_sample_logs
@@ -8,6 +10,11 @@ from .views import create_summary_views
 
 
 def main():
+    lock_file = "collyzer.lock"
+    if os.path.exists(lock_file):
+        print("Lock file exists, another instance of the script is running. Exiting.")
+        sys.exit()
+    open(lock_file, "w").close() 
     parser = argparse.ArgumentParser(description="Log Collector and Analyzer")
     parser.add_argument(
         "--use-sample-logs",
@@ -36,6 +43,10 @@ def main():
     print("\n### Log Collection Finished ###")
     print(f"Database is saved at: {SQLITE_DB_PATH}")
     print(f"To view the logs, run: 'datasette {SQLITE_DB_PATH}'")
+    try:
+        os.remove(lock_file)
+    except Exception as e:
+        pass
 
 
 if __name__ == "__main__":
