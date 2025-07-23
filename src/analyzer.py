@@ -29,25 +29,21 @@ def run_analysis(session: Session):
 def _execute_rule(session: Session, rule: dict):
     """Executes a single analysis rule and prints alerts for any findings."""
     rule_name = rule.get("name", "Unnamed Rule")
-    log_source = rule.get("log_source")
-    pattern = rule.get("pattern")
+    filters = rule.get("query_filters")
 
-    if not all([log_source, pattern]):
+    if not filters:
         print(f"  Skipping invalid rule: {rule_name}")
         return
 
     try:
-        query = session.query(LogEntry).filter(
-            LogEntry.log_source == log_source,
-            LogEntry.message.like(pattern)
-        )
+        query = session.query(LogEntry).filter_by(**filters)
         
         results = query.all()
         
         if results:
             print(f"\nALERT [{rule_name}]: Found {len(results)} matching log entries!")
             for entry in results:
-                print(f"  - Time: {entry.timestamp}, Host: {entry.hostname}, Message: {entry.message}")
+                print(f"  - Time: {entry.timestamp}, Host: {entry.hostname}, App: {entry.app}, User: {entry.user}, Action: {entry.action}")
 
     except Exception as e:
         print(f"  Error executing rule '{rule_name}': {e}")

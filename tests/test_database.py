@@ -3,21 +3,25 @@ from datetime import datetime
 
 from src.database import save_log_entries, LogEntry, _calculate_hash
 
-# Sample log entries for testing
+# Sample CIM-compliant log entries for testing
 SAMPLE_LOG_1 = {
     'timestamp': datetime(2025, 7, 14, 10, 0, 0),
     'hostname': 'host1',
-    'process_name': 'sshd',
-    'pid': 1234,
-    'message': 'Accepted publickey for user',
+    'action': 'success',
+    'app': 'sshd',
+    'category': 'authentication',
+    'user': 'testuser',
+    'raw_message': 'Jul 14 10:00:00 host1 sshd[1234]: Accepted publickey for user testuser',
     'log_source': 'auth'
 }
 SAMPLE_LOG_2 = {
     'timestamp': datetime(2025, 7, 14, 10, 0, 5),
     'hostname': 'host1',
-    'process_name': 'kernel',
-    'pid': None,
-    'message': 'Firewall: *TCP_IN Blocked* IN=eth0 ...',
+    'action': 'blocked',
+    'app': 'firewall',
+    'category': 'network',
+    'src_ip': '192.168.1.100',
+    'raw_message': 'Jul 14 10:00:05 host1 kernel: Firewall: *TCP_IN Blocked* IN=eth0 ...',
     'log_source': 'syslog'
 }
 # A duplicate of the first log

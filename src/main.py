@@ -4,6 +4,7 @@ import sys
 from .database import init_db, save_log_entries
 from .collector import fetch_all_logs_concurrently
 from .sample_loader import load_sample_logs
+from .log_parser import LogParser
 from .config import SQLITE_DB_PATH
 from .analyzer import run_analysis
 from .views import create_summary_views
@@ -25,12 +26,13 @@ def main():
 
     print("### Starting Log Collector ###")
 
+    log_parser = LogParser("parsing_rules.yml")
     session, engine = init_db(SQLITE_DB_PATH)
 
     if args.use_sample_logs:
-        all_log_entries = load_sample_logs()
+        all_log_entries = load_sample_logs(log_parser)
     else:
-        all_log_entries = fetch_all_logs_concurrently()
+        all_log_entries = fetch_all_logs_concurrently(log_parser)
 
     save_log_entries(session, all_log_entries)
 

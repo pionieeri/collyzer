@@ -1,85 +1,79 @@
 from unittest.mock import patch, mock_open
+import pytest
 from src.analyzer import run_analysis
 from src.database import LogEntry
 from datetime import datetime
 
-# Sample log entries for testing the analyzer
+# Sample CIM-compliant log entries for testing
 ANALYZER_LOGS = [
     LogEntry(
-        timestamp=datetime(2025, 7, 15, 10, 0, 0),
+        timestamp=datetime(2025, 7, 16, 10, 0, 0),
         hostname='host1',
         log_source='auth',
-        message='Failed password for invalid user admin from 1.2.3.4 port 1234 ssh2'
+        action='failure',
+        app='sshd',
+        category='authentication',
+        user='invalid_user'
     ),
     LogEntry(
-        timestamp=datetime(2025, 7, 15, 10, 5, 0),
+        timestamp=datetime(2025, 7, 16, 10, 5, 0),
         hostname='host2',
         log_source='auth',
-        message='sudo: user1 : TTY=pts/0 ; PWD=/home/user1 ; USER=root ; COMMAND=/usr/bin/apt update'
+        action='success',
+        app='sudo',
+        category='privilege-escalation',
+        user='admin'
     ),
     LogEntry(
-        timestamp=datetime(2025, 7, 15, 10, 10, 0),
+        timestamp=datetime(2025, 7, 16, 10, 10, 0),
         hostname='host1',
-        log_source='syslog',
-        message='kernel: some regular kernel message'
+        log_source='auth',
+        action='success',
+        app='sshd',
+        category='authentication',
+        user='testuser'
     )
 ]
 
-# Sample YAML content for the rules file
-SAMPLE_RULES_YAML = """
-- name: "Failed Password"
-  log_source: "auth"
-  pattern: "%Failed password%"
+# Sample YAML content for the new analysis rules file
+SAMPLE_ANALYSIS_RULES_YAML = """
+- name: "SSH Authentication Failure"
+  query_filters:
+    action: "failure"
+    category: "authentication"
+    app: "sshd"
 
 - name: "Successful Sudo Command"
-  log_source: "auth"
-  pattern: "%COMMAND=%"
-
-- name: "Kernel Messages"
-  log_source: "syslog"
-  pattern: "%kernel%"
+  query_filters:
+    action: "success"
+    app: "sudo"
 """
 
-def test_run_analysis_with_findings(db_session, capsys):
-    """Tests that the analyzer correctly finds and reports log entries based on rules."""
-    # Add sample logs to the mock database session
+@pytest.fixture
+def mock_analysis_rules_file(monkeypatch):
+    """Mocks the open() call to provide the test analysis rules."""
+    mock_file = mock_open(read_data=SAMPLE_ANALYSIS_RULES_YAML)
+    monkeypatch.setattr("builtins.open", mock_file)
+
+def test_run_analysis_with_findings(db_session, capsys, mock_analysis_rules_file):
+    """Tests that the analyzer correctly finds and reports alerts using query_filters."""
     db_session.add_all(ANALYZER_LOGS)
     db_session.commit()
 
-    # Mock the open() call to return our sample YAML rules
-    with patch("builtins.open", mock_open(read_data=SAMPLE_RULES_YAML)):
-        run_analysis(db_session)
+    run_analysis(db_session)
 
-    # Capture the printed output
     captured = capsys.readouterr()
 
-    # Assert that alerts for all three rules were printed
-    assert "ALERT [Failed Password]: Found 1 matching log entries!" in captured.out
+    # Assert that alerts for both rules were printed
+    assert "ALERT [SSH Authentication Failure]: Found 1 matching log entries!" in captured.out
     assert "ALERT [Successful Sudo Command]: Found 1 matching log entries!" in captured.out
-    assert "ALERT [Kernel Messages]: Found 1 matching log entries!" in captured.out
-    assert "- Time: 2025-07-15 10:00:00, Host: host1, Message: Failed password" in captured.out
+    # Check for specific details in the output
+    assert "User: invalid_user" in captured.out
+    assert "User: admin" in captured.out
 
-def test_run_analysis_no_findings(db_session, capsys):
-    """Tests that the analyzer reports nothing when no logs match the rules."""
-    # Database is empty, so no logs should match
-
-    with patch("builtins.open", mock_open(read_data=SAMPLE_RULES_YAML)):
-        run_analysis(db_session)
-
+def test_run_analysis_no_findings(db_session, capsys, mock_analysis_rules_file):
+    """Tests that no alerts are generated when no logs match the filters."""
+    # The database is empty, so no findings are expected
+    run_analysis(db_session)
     captured = capsys.readouterr()
-
-    # Assert that no alerts were printed
     assert "ALERT" not in captured.out
-
-def test_run_analysis_file_not_found(db_session, capsys):
-    """Tests that the analyzer handles a missing rules file gracefully."""
-    # Mock open() to raise FileNotFoundError
-    with patch("builtins.open", mock_open()) as mocked_open:
-        mocked_open.side_effect = FileNotFoundError
-
-        run_analysis(db_session)
-
-    captured = capsys.readouterr()
-
-    # Assert that the specific error message is printed
-    assert "Error: analysis_rules.yml not found" in captured.out

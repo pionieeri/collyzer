@@ -1,30 +1,19 @@
-
-- name: "Failed Password"
-  description: "Detects failed password attempts for any user."
-  log_source: "auth"
-  pattern: "%Failed password%"
+- name: "SSH Authentication Failure"
+  description: "An explicit rule to find failed SSH logins."
+  query_filters:
+    action: "failure"
+    category: "authentication"
+    app: "sshd"
 
 - name: "Successful Sudo Command"
   description: "Detects when a user successfully executes a command via sudo."
-  log_source: "auth"
-  pattern: "%COMMAND=%"
+  query_filters:
+    action: "success"
+    app: "sudo"
 
 - name: "New SSH Session"
   description: "Alerts on every successful SSH login."
-  log_source: "auth"
-  pattern: "%session opened for user%"
-
-- name: "Failed Sudo Attempt"
-  description: "A user failed to authenticate for a sudo command."
-  log_source: "auth"
-  pattern: "%NOT IN SUDOERS%"
-
-- name: "New User Created"
-  description: "A new local user account was created."
-  log_source: "auth"
-  pattern: "%new user:%"
-
-- name: "System Service Failure"
-  description: "A systemd service has failed to start."
-  log_source: "syslog"
-  pattern: "%Failed to start%"
+  query_filters:
+    action: "success"
+    category: "authentication"
+    app: "sshd"
