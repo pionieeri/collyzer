@@ -16,13 +16,23 @@ class LogEntry(Base):
     hash_id = sa.Column(sa.String, unique=True, index=True)
     hostname = sa.Column(sa.String, index=True)
     timestamp = sa.Column(sa.DateTime, index=True)
-    process_name = sa.Column(sa.String, index=True)
-    pid = sa.Column(sa.Integer, nullable=True)
-    message = sa.Column(sa.String)
-    log_source = sa.Column(sa.String, index=True)
+
+    # --- CIM Fields ---
+    action = sa.Column(sa.String, index=True)      # e.g., 'success', 'failure', 'allow', 'deny'
+    app = sa.Column(sa.String, index=True)          # e.g., 'sshd', 'sudo', 'kernel', 'nginx'
+    category = sa.Column(sa.String, index=True)     # e.g., 'authentication', 'firewall', 'web'
+    user = sa.Column(sa.String, index=True)
+    src_ip = sa.Column(sa.String, index=True)
+    dest_process = sa.Column(sa.String)
+    status = sa.Column(sa.String)                   # Can be used for status codes like '404' or '200'
+    # (Add other CIM fields as needed in the future)
+
+    # --- Original Data and Source ---
+    raw_message = sa.Column(sa.String)              # Fallback for the original log message
+    log_source = sa.Column(sa.String, index=True)   # The source file/type (e.g., 'auth', 'journal')
 
     def __repr__(self):
-        return f"<LogEntry(hostname='{self.hostname}', timestamp='{self.timestamp}', message='{self.message[:30]}...')>"
+        return f"<LogEntry(hostname='{self.hostname}', timestamp='{self.timestamp}', app='{self.app}', action='{self.action}')>"
 
 
 def init_db(db_path):

@@ -1,0 +1,34 @@
+# Method 1: Regex for traditional syslog auth messages
+- name: "Sudo Command Execution"
+  log_source: "auth"
+  parsing_method: "regex"
+  regex: 'USER=(?P<effective_user>\S+)\s+; COMMAND=(?P<command>.+)'
+  cim_mapping:
+    action: "success"
+    app: "sudo"
+    category: "privilege-escalation"
+    user: "{effective_user}"
+    dest_process: "{command}"
+
+- name: "SSH Session Opened"
+  log_source: "auth"
+  parsing_method: "regex"
+  regex: 'session opened for user (?P<user>\S+)'
+  cim_mapping:
+    action: "success"
+    app: "sshd"
+    category: "authentication"
+    user: "{user}"
+
+# Method 2: JSON for structured systemd journal logs
+- name: "Systemd Service Log"
+  log_source: "journal"
+  parsing_method: "json"
+  # 'regex' field is intentionally and correctly omitted.
+  cim_mapping:
+    app: "{_SYSTEMD_UNIT}"
+    hostname: "{_HOSTNAME}"
+    user: "{_UID}"
+    raw_message: "{MESSAGE}"
+    # A small helper function may be needed in the parser for this field to convert from epoch:
+    timestamp: "{__REALTIME_TIMESTAMP}"
