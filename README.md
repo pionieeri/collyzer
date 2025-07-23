@@ -1,69 +1,89 @@
 # Collyzer - Log Collector & Analyzer
 
-Collyzer is a tool for collecting, parsing, and storing log files from remote systems for security analysis. It fetches logs concurrently, deduplicates them using Redis, and stores them in a local SQLite database.
+Please be aware, that this project is build solely for understanding various topics around automated security practices, and as such it is not suitable for any production use.
+
+Collyzer is a tool for collecting, parsing, and storing log files from remote systems for security analysis.
 
 ## Features
 
-*   **Concurrent Remote Log Collection:** Connects to multiple hosts via SSH to fetch log files (`/var/log/syslog`, `/var/log/auth.log`) in parallel.
-*   **Log Deduplication:** Uses a Redis-backed cache to ensure that log entries are processed and stored only once, preventing duplicate data.
-*   **Syslog Parsing:** Parses standard syslog and auth logs to extract structured data (timestamp, hostname, process, PID, message).
-*   **SQLite Storage:** Stores parsed log entries in a local SQLite database for easy querying and analysis.
-*   **Configuration-driven:** Uses a `.env` file to manage target hosts, credentials, and database paths.
+*   **Concurrent Remote Log Collection:** Fetches logs from multiple hosts via SSH in parallel.
+*   **YAML-Driven Parsing:** Ingests and normalizes logs using a multi-method parser (`regex`, `json`) configured in `parsing_rules.yml`.
+*   **CIM-Compliant Schema:** Stores data in a structured format for powerful, cross-source querying.
+*   **Rule-Based Analysis:** Scans the normalized database for patterns defined in `analysis_rules.yml`.
+*   **Log Deduplication:** Uses a Redis-backed cache to prevent duplicate entries.
+*   **SQLite Storage:** Stores parsed log entries in a local SQLite database.
 
 ## Getting Started
 
 ### 1. Prerequisites
 
-*   **Redis:** A running Redis server instance is required for the log deduplication feature. The development environment will start one automatically.
+*   **Redis:** A running Redis server instance is required. The development environment starts one automatically.
 
 ### 2. Installation & Environment
 
-This project uses [Nix](https://nixos.org/) to provide a reproducible development environment. This is the recommended way to get started.
+This project uses [Nix](https://nixos.org/) for a reproducible development environment.
 
-1.  **Activate the environment:** This will install all necessary dependencies, including Python, `uv`, `redis`, and our development tools. It will also start a Redis server in the background if one isn't running.
+1.  **Activate the environment:**
     ```bash
     nix develop
     ```
-
-2.  **Configure the application:** Create a `.env` file in the root of the project. You can copy the provided template:
+2.  **Configure the application:** Copy the example `.env` file and edit it with your host IPs, SSH user, and key path.
     ```bash
     cp .env.example .env
     ```
-    Now, edit the `.env` file with your specific host IPs, SSH user, and key path.
 
 ### 3. Running the Collector
 
-Once the `.env` file is configured, run the application as a Python module:
-
 ```bash
+# Fetch remote logs
 uv run python -m src.main
-```
 
-To run using local sample logs for testing, use the `--use-sample-logs` flag:
-```bash
+# Use local sample logs for testing
 uv run python -m src.main --use-sample-logs
 ```
 
-### 4. Inspecting the Data
+## Configuration
 
-The collected logs will be stored in the SQLite file specified by `SQLITE_DB_PATH`. You can inspect the database using a tool like `datasette` (included in the development environment):
+The parsing and analysis logic is controlled by two YAML files:
 
+*   **`parsing_rules.yml`**: Defines how to parse different log sources.
+    ```yaml
+    # Example:
+    - name: "SSH Session Opened"
+      log_source: "auth"
+      parsing_method: "regex"
+      regex: 'session opened for user (?P<user>\S+)'
+      cim_mapping:
+        action: "success"
+        app: "sshd"
+        user: "{user}"
+    ```
+
+*   **`analysis_rules.yml`**: Defines queries to find specific events in the normalized data.
+    ```yaml
+    # Example:
+    - name: "SSH Authentication Failure"
+      query_filters:
+        action: "failure"
+        app: "sshd"
+    ```
+
+## Inspecting the Data
+
+Collected logs are stored in the SQLite file specified by `SQLITE_DB_PATH` (e.g., `logs.db`). The data is normalized into a CIM-compliant schema with fields like `action`, `app`, `user`, etc.
+
+You can inspect the database with `datasette`:
 ```bash
 datasette logs.db
 ```
 
 ## Development
 
-This project uses a few tools to ensure code quality and consistency.
-
-*   **Linting & Formatting:** We use [Ruff](https://docs.astral.sh/ruff/) to lint and format the codebase.
+*   **Linting & Formatting:**
     ```bash
-    # Check for linting errors
-    ruff check .
-    # Format all files
-    ruff format .
+    ruff check . && ruff format .
     ```
-*   **Testing:** The test suite is run using `pytest`.
+*   **Testing:**
     ```bash
     uv run pytest
     ```
