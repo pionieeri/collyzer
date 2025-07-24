@@ -1,6 +1,6 @@
 # Collyzer - Log Collector & Analyzer
 
-Please be aware, that this project is build solely for understanding various topics around automated security practices, and as such it is not suitable for any production use.
+Please be aware that this project is built solely for understanding various topics around automated security practices, and as such it is not suitable for any production use.
 
 Collyzer is a tool for collecting, parsing, and storing log files from remote systems for security analysis.
 
