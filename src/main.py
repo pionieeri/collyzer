@@ -47,7 +47,7 @@ def main():
     print(f"To view the logs, run: 'datasette {SQLITE_DB_PATH}'")
     try:
         os.remove(lock_file)
-    except Exception as e:
+    except Exception:
         pass
 
 
