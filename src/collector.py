@@ -1,32 +1,42 @@
 import os
+import uuid
+import json
 import paramiko
 from concurrent.futures import ThreadPoolExecutor
-from .config import HOST_IPS, SSH_USER, SSH_KEY_PATH, LOG_SOURCES
+from .config import HOST_IPS, SSH_USER, SSH_KEY_PATH
 
-# TODO: handling the same log lines for multiple times -> problem
+# The collector's responsibility is now to fetch raw logs and queue them.
+# The parsing is handled by a separate service.
 
-def _fetch_log_from_client(client: paramiko.SSHClient, host: str, log_path: str) -> str:
-    """Fetches a single log file using an existing SSH client connection."""
-    print(f"Attempting to fetch {log_path} from {host}...")
+QUEUE_DIR = "queue/pending"
+
+
+def _fetch_journald_logs(client: paramiko.SSHClient, host: str) -> str:
+    """Fetches logs from journalctl on a remote host as a JSON stream."""
+    command = "journalctl -o json"
+    print(f"Attempting to fetch journald logs from {host}...")
     try:
-        stdin, stdout, stderr = client.exec_command(f"cat {log_path}")
+        stdin, stdout, stderr = client.exec_command(command)
         log_content = stdout.read().decode("utf-8")
         error = stderr.read().decode("utf-8").strip()
         if error:
-            print(f"  Error on {host} reading {log_path}: {error}")
+            # journalctl often prints non-fatal errors to stderr, so we log them but don't fail.
+            print(f"  Stderr from journalctl on {host}: {error}")
+        if not log_content:
+            print(f"  No log content received from {host}.")
             return ""
-        print(
-            f"  Successfully fetched {len(log_content.splitlines())} lines from {log_path} on {host}."
-        )
+        print(f"  Successfully fetched {len(log_content.splitlines())} lines from {host}.")
         return log_content
     except Exception as e:
-        print(f"  An error occurred while fetching {log_path} from {host}: {e}")
+        print(f"  An error occurred while fetching logs from {host}: {e}")
         return ""
 
 
-def _process_host(host: str, log_parser) -> list:
-    """Establishes a single SSH connection to a host and fetches all logs."""
-    host_log_entries = []
+def _process_host(host: str):
+    """
+    Establishes an SSH connection to a host, fetches journald logs,
+    and writes them to a file in the queue.
+    """
     client = paramiko.SSHClient()
     client.load_system_host_keys()
 
@@ -38,14 +48,31 @@ def _process_host(host: str, log_parser) -> list:
             timeout=10,
         )
 
-        for source_name, remote_path in LOG_SOURCES.items():
-            log_content = _fetch_log_from_client(client, host, remote_path)
-            if not log_content:
+        log_content = _fetch_journald_logs(client, host)
+        if not log_content:
+            return
+
+        # Each line from journalctl is a separate JSON object.
+        # We'll process them into a list.
+        log_lines = log_content.strip().splitlines()
+        
+        # We can't assume that every line is a valid JSON object, so we'll try to parse them one by one
+        json_payload = []
+        for line in log_lines:
+            try:
+                json_payload.append(json.loads(line))
+            except json.JSONDecodeError:
+                print(f"  Warning: Could not decode JSON from line on {host}: {line}")
                 continue
-            for line in log_content.splitlines():
-                parsed_data = log_parser.parse(line, source_name)
-                if parsed_data:
-                    host_log_entries.append(parsed_data)
+
+        # Write the payload to a unique file in the queue.
+        output_filename = f"{uuid.uuid4()}.json"
+        output_path = os.path.join(QUEUE_DIR, output_filename)
+
+        with open(output_path, "w") as f:
+            json.dump({"host": host, "source_type": "journald", "logs": json_payload}, f)
+
+        print(f"  Queued logs from {host} to {output_path}")
 
     except paramiko.AuthenticationException:
         print(
@@ -57,18 +84,16 @@ def _process_host(host: str, log_parser) -> list:
         if client.get_transport() and client.get_transport().is_active():
             client.close()
 
-    return host_log_entries
 
-
-def fetch_all_logs_concurrently(log_parser) -> list:
+def fetch_all_logs_concurrently():
     """
-    Fetches logs from all hosts defined in config concurrently.
-    Returns a list of all parsed log entries.
+    Fetches logs from all hosts defined in config concurrently and queues them.
     """
-    all_log_entries = []
     print("### Fetching Remote Logs ###")
+    # Ensure the queue directory exists
+    os.makedirs(QUEUE_DIR, exist_ok=True)
+
     with ThreadPoolExecutor(max_workers=len(HOST_IPS)) as executor:
-        results = executor.map(lambda host: _process_host(host, log_parser), HOST_IPS)
-        for host_logs in results:
-            all_log_entries.extend(host_logs)
-    return all_log_entries
+        # No parser is passed anymore
+        executor.map(_process_host, HOST_IPS)
+    print("### Log Collection Finished ###")

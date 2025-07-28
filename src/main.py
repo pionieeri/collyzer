@@ -1,55 +1,57 @@
 import argparse
 import os
 import sys
-from .database import init_db, save_log_entries
-from .collector import fetch_all_logs_concurrently
-from .sample_loader import load_sample_logs
-from .log_parser import LogParser
+from .database import init_db
+from . import collector
+from . import parser_service
 from .config import SQLITE_DB_PATH
 from .analyzer import run_analysis
 from .views import create_summary_views
 
-
 def main():
-    lock_file = "collyzer.lock"
-    if os.path.exists(lock_file):
-        print("Lock file exists, another instance of the script is running. Exiting.")
-        sys.exit()
-    open(lock_file, "w").close() 
-    parser = argparse.ArgumentParser(description="Log Collector and Analyzer")
+    parser = argparse.ArgumentParser(description="Log Collector, Parser, and Analyzer")
     parser.add_argument(
-        "--use-sample-logs",
-        action="store_true",
-        help="Use local sample log files instead of fetching from remote hosts.",
+        "--service",
+        choices=["collector", "parser"],
+        help="Run a specific service continuously. 'collector' fetches logs, 'parser' processes them."
     )
     args = parser.parse_args()
 
-    print("### Starting Log Collector ###")
-
-    log_parser = LogParser("parsing_rules.yml")
+    # Initialize the database connection
     session, engine = init_db(SQLITE_DB_PATH)
 
-    if args.use_sample_logs:
-        all_log_entries = load_sample_logs(log_parser)
+    if args.service == "collector":
+        print("Running the collector service...")
+        collector.fetch_all_logs_concurrently()
+
+    elif args.service == "parser":
+        print("Running the parser service...")
+        parser_service.process_queued_logs(session)
+
     else:
-        all_log_entries = fetch_all_logs_concurrently(log_parser)
+        # Default behavior: run collector, then parser, then analysis.
+        print("### Running a single end-to-end cycle ###")
 
-    save_log_entries(session, all_log_entries)
+        # 1. Collect logs and write them to the queue
+        collector.fetch_all_logs_concurrently()
 
-    run_analysis(session)
+        # 2. Process all logs currently in the queue
+        print("\n### Starting one-time parsing run ###")
+        parser_service.process_single_pass(session)
 
-    create_summary_views(engine)
+        # 3. Run analysis on the newly added data
+        print("\n### Running Analysis ###")
+        run_analysis(session)
+
+        # 4. Create summary views
+        print("\n### Creating Summary Views ###")
+        create_summary_views(engine)
+
+        print("\n### End-to-end cycle finished ###")
+        print(f"Database is saved at: {SQLITE_DB_PATH}")
+        print(f"To view the logs, run: 'datasette {SQLITE_DB_PATH}'")
 
     session.close()
-
-    print("\n### Log Collection Finished ###")
-    print(f"Database is saved at: {SQLITE_DB_PATH}")
-    print(f"To view the logs, run: 'datasette {SQLITE_DB_PATH}'")
-    try:
-        os.remove(lock_file)
-    except Exception:
-        pass
-
 
 if __name__ == "__main__":
     main()

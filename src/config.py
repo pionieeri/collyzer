@@ -12,4 +12,4 @@ except Exception as e:
     )
     sys.exit(1)
 
-LOG_SOURCES = {"syslog": "/var/log/syslog", "auth": "/var/log/auth.log"}
+
