@@ -1,82 +1,89 @@
 # Collyzer - Log Collector & Analyzer
 
-Please be aware that this project is built solely for understanding various topics around automated security practices, and as such it is not suitable for any production use.
+**This project is intended for educational purposes to explore concepts in automated security data pipelines and is not recommended for production use.**
 
-Collyzer is a tool for collecting, parsing, and storing log files from remote systems for security analysis.
+Collyzer - currently - is a tool for collecting, parsing, and storing log files from remote systems for security analysis.
 
 ## Features
 
 *   **Concurrent Remote Log Collection:** Fetches logs from multiple hosts via SSH in parallel.
 *   **JSON Parsing:** Ingests and normalizes logs from systemd-journald JSON output.
-*   **CIM-Compliant Schema:** Stores data in a structured format for powerful, cross-source querying.
-*   **Rule-Based Analysis:** Scans the normalized database for patterns defined in `analysis_rules.yml`.
-*   **Log Deduplication:** Uses a Redis-backed cache to prevent duplicate entries.
+*   **CIM-Compliant Schema:** Stores data in a structured format.
 *   **SQLite Storage:** Stores parsed log entries in a local SQLite database.
 
 ## Getting Started
 
-### 1. Prerequisites
+### Prerequisites
 
-*   **Redis:** A running Redis server instance is required. The development environment starts one automatically.
+*   [Nix](https://nixos.org/download.html) must be installed on your system.
+*   Passwordless SSH access (using key-based authentication) must be configured for the target hosts you wish to monitor.
 
-### 2. Installation & Environment
+### Installation & Configuration
 
-This project uses [Nix](https://nixos.org/) for a reproducible development environment.
+1.  **Clone the repository:**
+    ```bash
+    git clone <your-repo-url>
+    cd collyzer
+    ```
 
-1.  **Activate the environment:**
+2.  **Enter the development environment:**
+    This command uses `flake.nix` to provide all necessary tools like Python, `uv`, `just`, and `datasette`.
     ```bash
     nix develop
     ```
-2.  **Configure the application:** Copy the example `.env` file and edit it with your host IPs, SSH user, and key path.
+
+3.  **Install Python dependencies:**
+    `uv` will install the packages defined in `pyproject.toml` into a virtual environment.
+    ```bash
+    uv sync
+    ```
+
+4.  **Configure the application:**
+    Copy the example environment file and edit it with your specific details.
     ```bash
     cp .env.example .env
     ```
+    Now, open `.env` and set the following variables:
+    *   `HOST_IPS`: A comma-separated list of remote host IPs.
+    *   `SSH_USER`: The username for SSH connections.
+    *   `SSH_KEY_PATH`: The absolute path to your SSH private key (e.g., `~/.ssh/id_rsa`).
+    *   `SQLITE_DB_PATH`: The path where the database file will be stored.
 
-### 3. Running the Application
+### 2. Running the Application
 
-Collyzer can be run in two main ways: as a single end-to-end cycle or as separate, continuous services for collection and parsing.
+This project uses a `justfile` to provide simple commands for common tasks.
 
-*   **End-to-End Cycle (Default):**
-    This is the standard mode. It fetches, parses, and analyzes logs in one go.
-    ```bash
-    # Fetch remote logs and process them
-    just run
-    # Or, using python directly:
-    uv run python -m src.main
-    ```
+#### Run a Full Cycle
 
-*   **Using Local Sample Logs:**
-    To test the pipeline with local data instead of connecting to remote hosts:
-    ```bash
-    # Run the full cycle using logs from the `sample_logs/` directory
-    just sample
-    # Or, using python directly:
-    uv run python -m src.main --use-sample-logs
-    ```
+This is the primary command. It connects to remote hosts, fetches new logs, queues them, and processes the entire queue into the database.
 
-*   **As Separate Services:**
-    For continuous operation, you can run the collector and parser as independent services.
-    ```bash
-    # Terminal 1: Run the log collector service
-    uv run python -m src.main --service collector
+```bash
+just run
+```
+<details>
+  <summary>Equivalent Python Command</summary>
 
-    # Terminal 2: Run the log parser service
-    uv run python -m src.main --service parser
-    ```
+  ```bash
+  uv run python -m src.main
+  ```
+</details>
 
+---
 
-## Configuration
+#### Run with Sample Data
 
-The analysis logic is controlled by `analysis_rules.yml`:
+To test the parsing and database logic without connecting to remote hosts, use the `sample` command. This will load logs from the `sample_logs/` directory into the queue.
 
-*   **`analysis_rules.yml`**: Defines queries to find specific events in the normalized data.
-    ```yaml
-    # Example:
-    - name: "SSH Authentication Failure"
-      query_filters:
-        action: "failure"
-        app: "sshd"
-    ```
+```bash
+just sample
+```
+<details>
+  <summary>Equivalent Python Command</summary>
+
+  ```bash
+  uv run python -m src.main --use-sample-logs
+  ```
+</details>
 
 ## Inspecting the Data
 
@@ -86,14 +93,3 @@ You can inspect the database with `datasette`:
 ```bash
 datasette logs.db
 ```
-
-## Development
-
-*   **Linting & Formatting:**
-    ```bash
-    ruff check . && ruff format .
-    ```
-*   **Testing:**
-    ```bash
-    uv run pytest
-    ```
