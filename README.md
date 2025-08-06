@@ -7,7 +7,7 @@ Collyzer is a tool for collecting, parsing, and storing log files from remote sy
 ## Features
 
 *   **Concurrent Remote Log Collection:** Fetches logs from multiple hosts via SSH in parallel.
-*   **YAML-Driven Parsing:** Ingests and normalizes logs using a multi-method parser (`regex`, `json`) configured in `parsing_rules.yml`.
+*   **JSON Parsing:** Ingests and normalizes logs from systemd-journald JSON output.
 *   **CIM-Compliant Schema:** Stores data in a structured format for powerful, cross-source querying.
 *   **Rule-Based Analysis:** Scans the normalized database for patterns defined in `analysis_rules.yml`.
 *   **Log Deduplication:** Uses a Redis-backed cache to prevent duplicate entries.
@@ -32,32 +32,42 @@ This project uses [Nix](https://nixos.org/) for a reproducible development envir
     cp .env.example .env
     ```
 
-### 3. Running the Collector
+### 3. Running the Application
 
-```bash
-# Fetch remote logs
-uv run python -m src.main
+Collyzer can be run in two main ways: as a single end-to-end cycle or as separate, continuous services for collection and parsing.
 
-# Use local sample logs for testing
-uv run python -m src.main --use-sample-logs
-```
+*   **End-to-End Cycle (Default):**
+    This is the standard mode. It fetches, parses, and analyzes logs in one go.
+    ```bash
+    # Fetch remote logs and process them
+    just run
+    # Or, using python directly:
+    uv run python -m src.main
+    ```
+
+*   **Using Local Sample Logs:**
+    To test the pipeline with local data instead of connecting to remote hosts:
+    ```bash
+    # Run the full cycle using logs from the `sample_logs/` directory
+    just sample
+    # Or, using python directly:
+    uv run python -m src.main --use-sample-logs
+    ```
+
+*   **As Separate Services:**
+    For continuous operation, you can run the collector and parser as independent services.
+    ```bash
+    # Terminal 1: Run the log collector service
+    uv run python -m src.main --service collector
+
+    # Terminal 2: Run the log parser service
+    uv run python -m src.main --service parser
+    ```
+
 
 ## Configuration
 
-The parsing and analysis logic is controlled by two YAML files:
-
-*   **`parsing_rules.yml`**: Defines how to parse different log sources.
-    ```yaml
-    # Example:
-    - name: "SSH Session Opened"
-      log_source: "auth"
-      parsing_method: "regex"
-      regex: 'session opened for user (?P<user>\S+)'
-      cim_mapping:
-        action: "success"
-        app: "sshd"
-        user: "{user}"
-    ```
+The analysis logic is controlled by `analysis_rules.yml`:
 
 *   **`analysis_rules.yml`**: Defines queries to find specific events in the normalized data.
     ```yaml

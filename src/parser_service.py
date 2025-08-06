@@ -6,13 +6,14 @@ from . import database
 
 QUEUE_DIR = "queue/pending"
 PROCESSED_DIR = "queue/processed"
+BATCH_SIZE = 500  # Number of log entries to save to DB at a time
 
 def process_single_pass(session):
     """
-    Processes all files currently in the queue directory in a single pass.
-    Returns the number of files processed.
+    Processes all files in the queue, combining memory-efficient batching
+    with atomic, file-level database transactions.
     """
-    processed_files = 0
+    processed_files_count = 0
     try:
         os.makedirs(PROCESSED_DIR, exist_ok=True)
         filenames = os.listdir(QUEUE_DIR)
@@ -21,66 +22,65 @@ def process_single_pass(session):
             print("  Queue is empty.")
             return 0
 
-        for filename in filenames:
-            if not filename.endswith(".json"):
-                continue
-
-            filepath = os.path.join(QUEUE_DIR, filename)
-            print(f"  Processing file: {filepath}")
-
-            try:
-                with open(filepath, "r") as f:
-                    data = json.load(f)
-
-                host = data.get("host", "unknown-host")
-                source_type = data.get("source_type", "unknown-source")
-                logs = data.get("logs", [])
-
-                if source_type != "journald":
-                    print(f"  Skipping file with unknown source_type: {source_type}")
-                    continue
-
-                parsed_entries = []
-                for log_entry in logs:
-                    parsed = log_parser.parse(log_entry, source_type)
-                    if parsed:
-                        parsed["host"] = host
-                        parsed_entries.append(parsed)
-                
-                if parsed_entries:
-                    database.save_log_entries(session, parsed_entries)
-                    print(f"  Saved {len(parsed_entries)} entries to the database.")
-
-                # Move the processed file
-                processed_filepath = os.path.join(PROCESSED_DIR, filename)
-                os.rename(filepath, processed_filepath)
-                print(f"  Moved processed file to {processed_filepath}")
-                processed_files += 1
-
-            except json.JSONDecodeError:
-                print(f"  Error decoding JSON from {filepath}. Moving to processed.")
-                processed_filepath = os.path.join(PROCESSED_DIR, filename)
-                os.rename(filepath, processed_filepath)
-            except Exception as e:
-                print(f"  An error occurred processing {filepath}: {e}")
-    
     except FileNotFoundError:
         print(f"  Queue directory not found: {QUEUE_DIR}. Nothing to process.")
+        return 0
 
-    return processed_files
+    for filename in filenames:
+        if not filename.endswith(".json"):
+            continue
 
-def process_queued_logs(session):
-    """
-    Scans the queue directory for log files, processes them, and moves them.
-    This function runs in a continuous loop.
-    """
-    print("### Starting Parser Service (Continuous Mode) ###")
-    while True:
+        filepath = os.path.join(QUEUE_DIR, filename)
+        processed_filepath = os.path.join(PROCESSED_DIR, filename)
+        print(f"  Processing file: {filename}")
+
         try:
-            processed_count = process_single_pass(session)
-            if processed_count == 0:
-                print("  Queue is empty. Waiting for new logs...")
-                time.sleep(10)
+            batch = []
+            total_entries_in_file = 0
+
+            with open(filepath, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        log_entry = json.loads(line)
+                        parsed = log_parser.parse(log_entry)
+                        if parsed:
+                            batch.append(parsed)
+
+                        if len(batch) >= BATCH_SIZE:
+                            database.save_log_entries(session, batch)
+                            total_entries_in_file += len(batch)
+                            batch = [] # Clear the batch for the next set
+
+                    except json.JSONDecodeError:
+                        print(f"    Warning: Skipping malformed JSON line in {filename}: {line[:100]}")
+
+            # Save the final, smaller batch if any entries remain
+            if batch:
+                database.save_log_entries(session, batch)
+                total_entries_in_file += len(batch)
+
+            # Commit only after the entire file is successfully read.
+            if total_entries_in_file > 0:
+                session.commit()
+                print(f"  Successfully committed {total_entries_in_file} entries to the database.")
+            else:
+                print("  No valid entries found to commit.")
+
+            processed_files_count += 1
+
         except Exception as e:
-            print(f"An unexpected error occurred in the parser service: {e}")
-            time.sleep(10)
+            # If anything fails (DB error, file read error), roll back the entire transaction for this file.
+            print(f"  An error occurred processing {filepath}: {e}")
+            print("  Rolling back transaction for this file.")
+            session.rollback()
+
+        finally:
+            # Always move the file to prevent it from being re-processed,
+            # regardless of whether it succeeded or failed (poisonous message handling).
+            os.rename(filepath, processed_filepath)
+            print(f"  Moved file to {processed_filepath}")
+
+    return processed_files_count

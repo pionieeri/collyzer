@@ -29,16 +29,16 @@
               pkgs.just
             ];
 
-            shellHook = ''
-              if ! pgrep -x "redis-server" > /dev/null
-              then
-                echo "Starting Redis server in the background..."
-                redis-server --daemonize yes
-              else
-                echo "Redis server is already running."
-              fi
-              echo "Development environment is ready."
-            '';
+            #shellHook = ''
+            #  if ! pgrep -x "redis-server" > /dev/null
+            #  then
+            #    echo "Starting Redis server in the background..."
+            #    redis-server --daemonize yes
+            #  else
+            #    echo "Redis server is already running."
+            #  fi
+            #  echo "Development environment is ready."
+            #'';
           };
         });
     };
