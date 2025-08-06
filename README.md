@@ -22,7 +22,7 @@ Collyzer - currently - is a tool for collecting, parsing, and storing log files 
 
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repo-url>
+    git clone https://github.com/pionieeri/collyzer
     cd collyzer
     ```
 
