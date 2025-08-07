@@ -2,10 +2,8 @@ import os
 import uuid
 import paramiko
 from concurrent.futures import ThreadPoolExecutor
-from .config import HOST_IPS, SSH_USER, SSH_KEY_PATH
+from .config import HOST_IPS, SSH_USER, SSH_KEY_PATH, QUEUE_DIR
 from typing import Optional
-
-QUEUE_DIR = "queue/pending"
 
 def _fetch_journald_logs(client: paramiko.SSHClient, host: str) -> Optional[paramiko.channel.ChannelFile]:
     """Fetches filtered logs from journalctl and returns the stdout stream for processing."""

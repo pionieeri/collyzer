@@ -13,3 +13,6 @@ except Exception as e:
     sys.exit(1)
 
 
+# --- Queue Configuration ---
+QUEUE_DIR = "queue/pending"
+PROCESSED_DIR = "queue/processed"

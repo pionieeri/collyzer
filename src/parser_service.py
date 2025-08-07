@@ -3,9 +3,8 @@ import json
 import time
 from . import log_parser
 from . import database
+from .config import QUEUE_DIR, PROCESSED_DIR
 
-QUEUE_DIR = "queue/pending"
-PROCESSED_DIR = "queue/processed"
 BATCH_SIZE = 500  # Number of log entries to save to DB at a time
 
 def process_single_pass(session):
